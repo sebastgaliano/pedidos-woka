@@ -3,9 +3,9 @@ const CONFIG = {
   sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
   products: [
     {
-      key: "equipación",
+      key: "equipacion",
       title: "Equipación",
-      sheet: "EQUIPACIÓN DE JUEGO",
+      sheet: "EQUIPACION DE JUEGO",
       sections: [
         { key: "camiseta_juego", title: "Camiseta de juego", anchorText: "CAMISETA DE JUEGO" },
         { key: "pantalón_juego", title: "Pantalón de juego", anchorText: "PANTALÓN DE JUEGO" },
@@ -501,6 +501,7 @@ function bind() {
 
 render();
 bind();
+
 
 
 
