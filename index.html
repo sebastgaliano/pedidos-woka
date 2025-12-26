@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Woka On Three · Generador de pedidos</title>
+
+  <style>
+    :root{
+      --bg: #0b0b0e;
+      --card: #121219;
+      --text: #f4f4f6;
+      --muted: #a7a7b3;
+      --line: rgba(255,255,255,.10);
+      --accent: #ff6a00; /* naranja */
+      --accent2: #ff8a3d;
+    }
+
+    *{ box-sizing: border-box; }
+
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1200px 600px at 20% 0%, rgba(255,106,0,.14), transparent 60%),
+        radial-gradient(1000px 500px at 90% 10%, rgba(255,106,0,.10), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      padding: 18px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 16px;
+      padding: 14px 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      margin-bottom: 16px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    /* Logo: ajustado para tu PNG (blanco sobre negro) */
+    .logo{
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: #0b0b0e;
+      border: 1px solid rgba(255,255,255,.15);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      flex: 0 0 auto;
+    }
+
+    .logo img{
+      width: 85%;
+      height: 85%;
+      object-fit: contain;
+      display:block;
+    }
+
+    .brand h1{
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: .4px;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand p{
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .actions{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+      justify-content:flex-end;
+      flex: 0 0 auto;
+    }
+
+    button{
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,106,0,.35);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn{
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color: #0b0b0e;
+      border: 0;
+    }
+
+    .btn:active{ transform: translateY(1px); }
+
+    .btn-ghost{
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.14);
+      font-weight: 600;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .card{
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    }
+
+    .card h2{
+      margin:0 0 10px;
+      font-size: 16px;
+      display:flex;
+      align-items:center;
+      gap: 10px;
+    }
+
+    .chip{
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,106,0,.35);
+      background: rgba(255,106,0,.12);
+      color: #ffd8c2;
+    }
+
+    .muted{
+      color: var(--muted);
+      font-size: 13px;
+      margin: 6px 0 0;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 10px;
+    }
+
+    label{
+      font-size: 12px;
+      color: var(--muted);
+      display:block;
+      margin-bottom: 6px;
+    }
+
+    input{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      outline: none;
+    }
+
+    input:focus{
+      border-color: rgba(255,106,0,.6);
+      box-shadow: 0 0 0 3px rgba(255,106,0,.18);
+    }
+
+    .subhead{
+      margin: 12px 0 8px;
+      font-size: 13px;
+      color: var(--text);
+      opacity: .95;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+
+    .footer-note{
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 720px){
+      .row{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .topbar{ align-items:flex-start; }
+      .brand h1{ font-size: 16px; }
+    }
+  </style>
+
+  <!-- SheetJS (xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <!-- HEADER -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">
+        <img src="./logo.png" alt="Woka On Three">
+      </div>
+      <div>
+        <h1>Woka On Three</h1>
+        <p>Generador de pedidos · Ropa oficial</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-ghost" type="button" onclick="location.reload()">Limpiar</button>
+      <button class="btn" id="btn" type="button">Generar Excel</button>
+    </div>
+  </div>
+
+  <!-- CONTENIDO -->
+  <div class="grid">
+
+    <div class="card">
+      <h2>Camiseta <span class="chip">Hoja: CAMISETA</span></h2>
+      <div class="row">
+        <div><label>M</label><input id="cam_m" type="number" min="0" value="0"></div>
+        <div><label>L</label><input id="cam_l" type="number" min="0" value="0"></div>
+        <div><label>XL</label><input id="cam_xl" type="number" min="0" value="0"></div>
+        <div><label>2XL</label><input id="cam_2xl" type="number" min="0" value="0"></div>
+      </div>
+      <p class="muted">Rellena cantidades. La app usa la plantilla del proveedor y solo escribe los números.</p>
+    </div>
+
+    <div class="card">
+      <h2>Sudadera <span class="chip">Hoja: SUDADERA</span></h2>
+      <p class="muted">En tu plantilla hay 2 bloques: <b>SUDADERA TECNICA</b> (filas 3–6) y <b>SUDADERA PASEO</b> (filas 7–10).</p>
+
+      <div class="subhead">Sudadera técnica</div>
+      <div class="row">
+        <div><label>M</label><input id="sudt_m" type="number" min="0" value="0"></div>
+        <div><label>L</label><input id="sudt_l" type="number" min="0" value="0"></div>
+        <div><label>XL</label><input id="sudt_xl" type="number" min="0" value="0"></div>
+        <div><label>2XL</label><input id="sudt_2xl" type="number" min="0" value="0"></div>
+      </div>
+
+      <div class="subhead">Sudadera paseo</div>
+      <div class="row">
+        <div><label>M</label><input id="sudp_m" type="number" min="0" value="0"></div>
+        <div><label>L</label><input id="sudp_l" type="number" min="0" value="0"></div>
+        <div><label>XL</label><input id="sudp_xl" type="number" min="0" value="0"></div>
+        <div><label>2XL</label><input id="sudp_2xl" type="number" min="0" value="0"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Pantalón chándal <span class="chip">Hoja: PANTALON CHANDAL</span></h2>
+      <div class="row">
+        <div><label>M</label><input id="pch_m" type="number" min="0" value="0"></div>
+        <div><label>L</label><input id="pch_l" type="number" min="0" value="0"></div>
+        <div><label>XL</label><input id="pch_xl" type="number" min="0" value="0"></div>
+        <div><label>2XL</label><input id="pch_2xl" type="number" min="0" value="0"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Notas</h2>
+      <p class="muted">
+        Coloca estos archivos juntos en la misma carpeta:
+        <b>index.html</b>, <b>app.js</b>, <b>logo.png</b>, <b>Hoja de pedido_actualizada.xlsx</b>.
+      </p>
+      <p class="footer-note">
+        Cuando lo publiques (GitHub Pages), podrás abrirlo desde el móvil y añadirlo a la pantalla de inicio como una app.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- LÓGICA -->
+  <script src="./app.js"></script>
+</body>
+</html>
