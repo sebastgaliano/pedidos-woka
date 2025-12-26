@@ -15,9 +15,7 @@
       --accent: #ff6a00;
       --accent2: #ff8a3d;
     }
-
     *{ box-sizing: border-box; }
-
     body{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background:
@@ -61,16 +59,9 @@
       overflow:hidden;
       flex: 0 0 auto;
     }
-
-    .logo img{
-      width: 85%;
-      height: 85%;
-      object-fit: contain;
-      display:block;
-    }
+    .logo img{ width: 85%; height: 85%; object-fit: contain; display:block; }
 
     .brand-text{ min-width: 0; }
-
     .brand h1{
       font-size: 18px;
       margin: 0;
@@ -80,7 +71,6 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
     .brand p{
       margin: 2px 0 0;
       color: var(--muted);
@@ -104,29 +94,22 @@
       border-radius: 14px;
       border: 1px solid rgba(255,106,0,.35);
       cursor: pointer;
-      font-weight: 700;
+      font-weight: 800;
     }
-
     .btn{
       background: linear-gradient(180deg, var(--accent), var(--accent2));
       color: #0b0b0e;
       border: 0;
     }
-
     .btn:active{ transform: translateY(1px); }
-
     .btn-ghost{
       background: rgba(255,255,255,.03);
       color: var(--text);
       border: 1px solid rgba(255,255,255,.14);
-      font-weight: 600;
+      font-weight: 700;
     }
 
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-    }
+    .grid{ display:grid; grid-template-columns: 1fr; gap: 14px; }
 
     .card{
       border: 1px solid var(--line);
@@ -143,13 +126,7 @@
       margin-bottom: 12px;
     }
 
-    .card h2{
-      margin:0;
-      font-size: 16px;
-      display:flex;
-      align-items:center;
-      gap: 10px;
-    }
+    .card h2{ margin:0; font-size: 16px; }
 
     .chip{
       font-size: 11px;
@@ -162,16 +139,12 @@
       flex: 0 0 auto;
     }
 
-    .muted{
-      color: var(--muted);
-      font-size: 13px;
-      margin: 6px 0 0;
-    }
+    .muted{ color: var(--muted); font-size: 13px; margin: 6px 0 0; }
 
     .subhead{
       margin: 12px 0 10px;
       font-size: 13px;
-      font-weight: 800;
+      font-weight: 900;
       letter-spacing: .2px;
       color: var(--text);
       opacity: .95;
@@ -199,7 +172,7 @@
       color: var(--text);
       outline: none;
       text-align: center;
-      font-weight: 800;
+      font-weight: 900;
     }
 
     input:focus{
@@ -207,29 +180,13 @@
       box-shadow: 0 0 0 3px rgba(255,106,0,.18);
     }
 
-    .mobile-actions{
-      display:none;
-    }
+    .mobile-actions{ display:none; }
 
     @media (max-width: 720px){
-      .topbar{
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-      }
-
-      .actions{
-        width: 100%;
-        display:none;
-      }
-
-      .sizes{
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      body{
-        padding-bottom: 92px;
-      }
+      .topbar{ flex-direction: column; align-items: stretch; gap: 12px; }
+      .actions{ display:none; }
+      .sizes{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      body{ padding-bottom: 92px; }
 
       .mobile-actions{
         position: fixed;
@@ -280,76 +237,7 @@
     </div>
   </div>
 
-  <div class="grid">
-    <div class="card">
-      <div class="card-head">
-        <h2>Camiseta</h2>
-        <span class="chip">Hoja: CAMISETA</span>
-      </div>
-
-      <div class="sizes">
-        <div><label>XS</label><input id="cam_xs" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>S</label><input id="cam_s" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>M</label><input id="cam_m" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>L</label><input id="cam_l" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>XL</label><input id="cam_xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>2XL</label><input id="cam_2xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>3XL</label><input id="cam_3xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>4XL</label><input id="cam_4xl" type="number" min="0" value="0" inputmode="numeric"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">
-        <h2>Sudadera</h2>
-        <span class="chip">Hoja: SUDADERA</span>
-      </div>
-
-      <div class="subhead">Sudadera técnica</div>
-      <div class="sizes">
-        <div><label>XS</label><input id="sudt_xs" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>S</label><input id="sudt_s" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>M</label><input id="sudt_m" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>L</label><input id="sudt_l" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>XL</label><input id="sudt_xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>2XL</label><input id="sudt_2xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>3XL</label><input id="sudt_3xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>4XL</label><input id="sudt_4xl" type="number" min="0" value="0" inputmode="numeric"></div>
-      </div>
-
-      <div class="subhead">Sudadera paseo</div>
-      <div class="sizes">
-        <div><label>XS</label><input id="sudp_xs" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>S</label><input id="sudp_s" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>M</label><input id="sudp_m" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>L</label><input id="sudp_l" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>XL</label><input id="sudp_xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>2XL</label><input id="sudp_2xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>3XL</label><input id="sudp_3xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>4XL</label><input id="sudp_4xl" type="number" min="0" value="0" inputmode="numeric"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">
-        <h2>Pantalón chándal</h2>
-        <span class="chip">Hoja: PANTALON CHANDAL</span>
-      </div>
-
-      <div class="sizes">
-        <div><label>XS</label><input id="pch_xs" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>S</label><input id="pch_s" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>M</label><input id="pch_m" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>L</label><input id="pch_l" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>XL</label><input id="pch_xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>2XL</label><input id="pch_2xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>3XL</label><input id="pch_3xl" type="number" min="0" value="0" inputmode="numeric"></div>
-        <div><label>4XL</label><input id="pch_4xl" type="number" min="0" value="0" inputmode="numeric"></div>
-      </div>
-
-      <p class="muted">Si una talla no existe en la plantilla, se ignora automáticamente.</p>
-    </div>
-  </div>
+  <div id="app" class="grid"></div>
 
   <div class="mobile-actions">
     <button class="btn-ghost" id="btnClearMobile" type="button">Limpiar</button>
