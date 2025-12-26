@@ -25,6 +25,32 @@ function shiftMerges(ws, fromRow, delta) {
     if (m.e.r >= fromRow) m.e.r += delta;
   }
 }
+function findHeaderRow(ws, startRow, endRow) {
+  if (!ws || !ws["!ref"]) return null;
+
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  const rStart = Math.max(startRow, range.s.r);
+  const rEnd = Math.min(endRow, range.e.r);
+
+  const required = ["nombre", "talla", "cantidad"]; // mínimo fiable
+
+  for (let r = rStart; r <= rEnd; r++) {
+    let hit = 0;
+
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      if (!cell || cell.v == null) continue;
+
+      const v = String(cell.v).toLowerCase().trim();
+      if (required.some(k => v === k)) hit++;
+    }
+
+    if (hit >= 2) return r; // con 2/3 ya lo damos por bueno
+  }
+
+  return null;
+}
+
 
 function clampMergesToRef(ws) {
   const merges = ws["!merges"];
@@ -447,6 +473,7 @@ function bind() {
 
 render();
 bind();
+
 
 
 
