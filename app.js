@@ -42,6 +42,76 @@ const CONFIG = {
   ],
 };
 
+function collectSummary() {
+  const lines = [];
+  let grandTotal = 0;
+
+  for (const p of CONFIG.products) {
+    for (const sec of p.sections) {
+      const entries = [];
+      let subtotal = 0;
+
+      for (const size of CONFIG.sizes) {
+        const qty = n(idFor(p.key, sec.key, size));
+        if (qty > 0) {
+          entries.push({ size, qty });
+          subtotal += qty;
+        }
+      }
+
+      if (entries.length) {
+        grandTotal += subtotal;
+
+        const title = sec.title ? `${p.title} · ${sec.title}` : p.title;
+        const items = entries.map(e => `${e.size}: ${e.qty}`).join(" · ");
+
+        lines.push({ title, subtotal, items });
+      }
+    }
+  }
+
+  return { lines, grandTotal };
+}
+
+function renderSummaryHTML(summary) {
+  if (!summary.lines.length) {
+    return `
+      <div style="font-weight:800;">No has añadido ninguna prenda.</div>
+      <div style="color:#a7a7b3; font-size:13px; margin-top:6px;">Añade cantidades y vuelve a intentarlo.</div>
+    `;
+  }
+
+  const blocks = summary.lines.map(l => `
+    <div style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,.08);">
+      <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
+        <div style="font-weight:900;">${escapeHtml(l.title)}</div>
+        <div style="color:#ffd8c2; font-weight:900;">${l.subtotal}</div>
+      </div>
+      <div style="color:#a7a7b3; font-size:13px; margin-top:4px; line-height:1.35;">
+        ${escapeHtml(l.items)}
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:10px;">
+      <div style="color:#a7a7b3; font-size:13px;">Resumen de prendas</div>
+      <div style="font-weight:900;">Total: ${summary.grandTotal}</div>
+    </div>
+    <div>${blocks}</div>
+  `;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
 function idFor(productKey, sectionKey, size) {
   return `${productKey}__${sectionKey}__${String(size).toLowerCase()}`;
 }
@@ -339,6 +409,43 @@ function applySection(ws, productKey, sectionKey, anchorText) {
   }
 }
 
+function openConfirmDialog(onConfirm) {
+  const dlg = document.getElementById("confirmDialog");
+  const content = document.getElementById("dlgContent");
+  const btnConfirm = document.getElementById("dlgConfirm");
+  const btnCancel = document.getElementById("dlgCancel");
+  const btnClose = document.getElementById("dlgClose");
+
+  const summary = collectSummary();
+  content.innerHTML = renderSummaryHTML(summary);
+
+  if (!summary.lines.length) {
+    btnConfirm.disabled = true;
+    btnConfirm.style.opacity = "0.6";
+    btnConfirm.style.cursor = "not-allowed";
+  } else {
+    btnConfirm.disabled = false;
+    btnConfirm.style.opacity = "";
+    btnConfirm.style.cursor = "";
+  }
+
+  const close = () => dlg.close();
+  btnCancel.onclick = close;
+  btnClose.onclick = close;
+
+  btnConfirm.onclick = async () => {
+    close();
+    await onConfirm();
+  };
+
+  dlg.showModal();
+}
+
+function confirmClear() {
+  const ok = confirm("¿Seguro que quieres limpiar el formulario? Se perderán las cantidades.");
+  if (ok) location.reload();
+}
+
 async function generate() {
   const wb = await loadTemplate();
 
@@ -372,4 +479,5 @@ function bind() {
 
 render();
 bind();
+
 
