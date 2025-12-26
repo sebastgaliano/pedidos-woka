@@ -1,18 +1,65 @@
+const SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"];
+
 function n(id) {
-  const v = Number(document.getElementById(id).value);
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  const v = Number(el.value);
   return Number.isFinite(v) && v >= 0 ? v : 0;
 }
 
-// Set value safely in a worksheet cell
-function setCell(ws, addr, value) {
+function normalizeSize(v) {
+  return String(v ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace(/^XXS$/, "XS");
+}
+
+function loadSizeMapFromSheet(ws) {
+  const map = new Map(); // size -> { row, col }
+  if (!ws || !ws["!ref"]) return map;
+
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = ws[addr];
+      if (!cell || cell.v == null) continue;
+
+      const s = normalizeSize(cell.v);
+      if (!SIZES.includes(s)) continue;
+
+      // Guardamos la primera aparición de cada talla (normalmente es la columna de tallas)
+      if (!map.has(s)) map.set(s, { r, c });
+    }
+  }
+  return map;
+}
+
+function setNumericCell(ws, r, c, value) {
+  const addr = XLSX.utils.encode_cell({ r, c });
   ws[addr] = ws[addr] || {};
   ws[addr].v = value;
-  ws[addr].t = "n"; // numeric
+  ws[addr].t = "n";
+}
+
+function applyBlock(ws, prefix) {
+  const sizeMap = loadSizeMapFromSheet(ws);
+
+  // Rellena en la columna de la derecha de donde esté la talla
+  for (const size of SIZES) {
+    const pos = sizeMap.get(size);
+    if (!pos) continue;
+
+    const key = `${prefix}_${size.toLowerCase()}`; // ej: cam_xs
+    const val = n(key);
+    setNumericCell(ws, pos.r, pos.c + 1, val);
+  }
 }
 
 async function loadTemplate() {
-  const res = await fetch("./Hoja de pedido_actualizada.xlsx");
-  if (!res.ok) throw new Error("No se pudo cargar la plantilla. ¿Está en la misma carpeta?");
+  const res = await fetch("./Hoja de pedido_actualizada.xlsx", { cache: "no-store" });
+  if (!res.ok) throw new Error("No se pudo cargar la plantilla.");
   const ab = await res.arrayBuffer();
   return XLSX.read(ab, { type: "array" });
 }
@@ -25,50 +72,112 @@ function buildFilename() {
   return `PEDIDO_WOKA_${yyyy}-${mm}-${dd}.xlsx`;
 }
 
-document.getElementById("btn").addEventListener("click", async () => {
+function downloadWorkbook(wb, filename) {
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([out], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function generate() {
+  const wb = await loadTemplate();
+
+  const wsCam = wb.Sheets["CAMISETA"];
+  if (wsCam) applyBlock(wsCam, "cam");
+
+  const wsSud = wb.Sheets["SUDADERA"];
+  if (wsSud) {
+    // Para diferenciar técnica y paseo, buscamos tallas y rellenamos todas;
+    // si tu hoja tiene 2 bloques con tallas repetidas, la función por defecto
+    // rellenará la primera aparición de cada talla.
+    // Para hacerlo 100% exacto con 2 bloques, usamos un método por “anclaje”:
+    applySudaderaTwoBlocks(wsSud);
+  }
+
+  const wsPch = wb.Sheets["PANTALON CHANDAL"];
+  if (wsPch) applyBlock(wsPch, "pch");
+
+  downloadWorkbook(wb, buildFilename());
+}
+
+function findRowContaining(ws, text) {
+  if (!ws || !ws["!ref"]) return null;
+  const t = String(text).toLowerCase();
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = ws[addr];
+      if (!cell || cell.v == null) continue;
+      const s = String(cell.v).toLowerCase();
+      if (s.includes(t)) return r;
+    }
+  }
+  return null;
+}
+
+function loadSizeMapFromSheetStartingAt(ws, startRow) {
+  const map = new Map();
+  if (!ws || !ws["!ref"]) return map;
+
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  for (let r = Math.max(startRow, range.s.r); r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = ws[addr];
+      if (!cell || cell.v == null) continue;
+
+      const s = normalizeSize(cell.v);
+      if (!SIZES.includes(s)) continue;
+
+      if (!map.has(s)) map.set(s, { r, c });
+    }
+  }
+  return map;
+}
+
+function applyBlockFrom(ws, prefix, startRow) {
+  const sizeMap = loadSizeMapFromSheetStartingAt(ws, startRow);
+  for (const size of SIZES) {
+    const pos = sizeMap.get(size);
+    if (!pos) continue;
+    const key = `${prefix}_${size.toLowerCase()}`;
+    const val = n(key);
+    setNumericCell(ws, pos.r, pos.c + 1, val);
+  }
+}
+
+function applySudaderaTwoBlocks(ws) {
+  const rowTec = findRowContaining(ws, "SUDADERA TECNICA");
+  const rowPas = findRowContaining(ws, "SUDADERA PASEO");
+
+  // Si no encontramos títulos, caemos al modo simple
+  if (rowTec == null || rowPas == null) {
+    applyBlock(ws, "sudt");
+    return;
+  }
+
+  // Rellenamos desde justo debajo del título
+  applyBlockFrom(ws, "sudt", rowTec + 1);
+  applyBlockFrom(ws, "sudp", rowPas + 1);
+}
+
+document.getElementById("btn")?.addEventListener("click", async () => {
   try {
-    const wb = await loadTemplate();
-
-    // ======================
-    // CAMISETA (columna F)
-    // En tu plantilla: tallas en E3..E6 (M,L,XL,2XL) y cantidades en F3..F6
-    // ======================
-    const wsCam = wb.Sheets["CAMISETA"];
-    setCell(wsCam, "F3", n("cam_m"));
-    setCell(wsCam, "F4", n("cam_l"));
-    setCell(wsCam, "F5", n("cam_xl"));
-    setCell(wsCam, "F6", n("cam_2xl"));
-
-    // ======================
-    // SUDADERA
-    // Técnica: filas 3..6 (M,L,XL,2XL) cantidades F3..F6
-    // Paseo:   filas 7..10 (M,L,XL,2XL) cantidades F7..F10
-    // ======================
-    const wsSud = wb.Sheets["SUDADERA"];
-    setCell(wsSud, "F3", n("sudt_m"));
-    setCell(wsSud, "F4", n("sudt_l"));
-    setCell(wsSud, "F5", n("sudt_xl"));
-    setCell(wsSud, "F6", n("sudt_2xl"));
-
-    setCell(wsSud, "F7", n("sudp_m"));
-    setCell(wsSud, "F8", n("sudp_l"));
-    setCell(wsSud, "F9", n("sudp_xl"));
-    setCell(wsSud, "F10", n("sudp_2xl"));
-
-    // ======================
-    // PANTALON CHANDAL (columna F, filas 3..6)
-    // ======================
-    const wsPch = wb.Sheets["PANTALON CHANDAL"];
-    setCell(wsPch, "F3", n("pch_m"));
-    setCell(wsPch, "F4", n("pch_l"));
-    setCell(wsPch, "F5", n("pch_xl"));
-    setCell(wsPch, "F6", n("pch_2xl"));
-
-    // PANTALON (hoja vacía en tu ejemplo): de momento no la tocamos.
-    // Si quieres, luego la rellenamos con el mismo patrón.
-
-    XLSX.writeFile(wb, buildFilename());
+    await generate();
   } catch (err) {
-    alert(err.message || String(err));
+    alert(err?.message || String(err));
   }
 });
+
+document.getElementById("btnClear")?.addEventListener("click", () => location.reload());
