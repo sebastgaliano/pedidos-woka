@@ -465,19 +465,22 @@ async function generate() {
 
 function bind() {
   const run = async () => {
-    try { await generate(); }
-    catch (e) { alert(e?.message || String(e)); }
+    openConfirmDialog(async () => {
+      try { await generate(); }
+      catch (e) { alert(e?.message || String(e)); }
+    });
   };
 
   document.getElementById("btn")?.addEventListener("click", run);
   document.getElementById("btnMobile")?.addEventListener("click", run);
 
-  const clear = () => location.reload();
-  document.getElementById("btnClear")?.addEventListener("click", clear);
-  document.getElementById("btnClearMobile")?.addEventListener("click", clear);
+  document.getElementById("btnClear")?.addEventListener("click", confirmClear);
+  document.getElementById("btnClearMobile")?.addEventListener("click", confirmClear);
 }
+
 
 render();
 bind();
+
 
 
