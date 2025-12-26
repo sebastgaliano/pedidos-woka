@@ -16,6 +16,49 @@ const CONFIG = {
     // { key: "pantalon_juego", title: "Pantalón de juego", sheet: "PANTALON JUEGO", sections: [{ key:"base", title:null, anchorText:null }] },
   ],
 };
+function shiftMerges(ws, fromRow, delta) {
+  const merges = ws["!merges"];
+  if (!Array.isArray(merges) || delta === 0) return;
+
+  for (const m of merges) {
+    if (m.s.r >= fromRow) m.s.r += delta;
+    if (m.e.r >= fromRow) m.e.r += delta;
+  }
+}
+
+function clampMergesToRef(ws) {
+  const merges = ws["!merges"];
+  if (!Array.isArray(merges) || !ws["!ref"]) return;
+
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  ws["!merges"] = merges.filter(m =>
+    m.s.r >= range.s.r && m.e.r <= range.e.r &&
+    m.s.c >= range.s.c && m.e.c <= range.e.c
+  );
+}
+
+function autoFitColumns(ws, minWch = 8, maxWch = 70) {
+  if (!ws || !ws["!ref"]) return;
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  const cols = new Array(range.e.c + 1).fill(0);
+
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      if (!cell || cell.v == null) continue;
+
+      const s = String(cell.v);
+      // penaliza menos números, más texto largo
+      const len = s.length;
+      cols[c] = Math.max(cols[c], len);
+    }
+  }
+
+  ws["!cols"] = cols.map(len => {
+    const wch = Math.max(minWch, Math.min(maxWch, Math.ceil(len * 1.1)));
+    return { wch };
+  });
+}
 
 function idFor(productKey, sectionKey, size) {
   return `${productKey}__${sectionKey}__${String(size).toLowerCase()}`;
@@ -200,11 +243,20 @@ function shiftRows(ws, fromRow, delta) {
     setCell(ws, nr, c, cell);
   }
 
-  newRange.e.r = Math.max(newRange.e.r, range.e.r + (range.e.r >= fromRow ? delta : 0));
-  if (delta < 0 && fromRow <= range.e.r) newRange.e.r = range.e.r + delta;
+  // Ajusta merges (celdas combinadas) para que no se rompa el formato
+  shiftMerges(ws, fromRow, delta);
+
+  // Actualiza rango
+  if (delta > 0) {
+    if (range.e.r >= fromRow) newRange.e.r = range.e.r + delta;
+  } else {
+    if (range.e.r >= fromRow) newRange.e.r = range.e.r + delta;
+  }
 
   setRef(ws, newRange);
+  clampMergesToRef(ws);
 }
+
 
 function cloneCell(cell) {
   if (!cell) return undefined;
@@ -386,3 +438,4 @@ function bind() {
 
 render();
 bind();
+
