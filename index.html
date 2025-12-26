@@ -246,7 +246,27 @@
     <button class="btn" id="btnMobile" type="button">Generar Excel</button>
   </div>
 
+  <dialog id="confirmDialog" style="border:0; padding:0; border-radius:18px; max-width: 520px; width: calc(100% - 24px);">
+    <div style="padding:16px; border:1px solid rgba(255,255,255,.12); border-radius:18px; background: rgba(10,10,14,.92); color:#f4f4f6;">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px;">
+        <div>
+          <div style="font-weight:900; font-size:16px;">Confirmar pedido</div>
+          <div style="color:#a7a7b3; font-size:13px; margin-top:4px;">Revisa el resumen antes de generar el Excel.</div>
+        </div>
+        <button id="dlgClose" class="btn-ghost" type="button" style="padding:10px 12px;">Cerrar</button>
+      </div>
+  
+      <div id="dlgContent" style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background: rgba(255,255,255,.03); max-height: 46vh; overflow:auto;"></div>
+  
+      <div style="display:grid; grid-template-columns: 1fr 1.3fr; gap:10px; margin-top:12px;">
+        <button id="dlgCancel" class="btn-ghost" type="button">Cancelar</button>
+        <button id="dlgConfirm" class="btn" type="button">Generar y descargar</button>
+      </div>
+    </div>
+  </dialog>
+
   <script src="./app.js"></script>
 </body>
 </html>
+
 
