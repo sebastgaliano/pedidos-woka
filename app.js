@@ -414,6 +414,12 @@ async function generate() {
     }
   }
 
+  for (const p of CONFIG.products) {
+    const ws = wb.Sheets[p.sheet];
+    if (!ws) continue;
+    autoFitColumns(ws, 8, 70);
+  }
+
   downloadWorkbook(wb, buildFilename());
 }
 
@@ -438,4 +444,5 @@ function bind() {
 
 render();
 bind();
+
 
