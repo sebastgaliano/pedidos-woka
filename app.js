@@ -42,6 +42,25 @@ const CONFIG = {
   ],
 };
 
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function ensureSheet(wb, sheetName, templateName) {
+  if (wb.Sheets[sheetName]) return wb.Sheets[sheetName];
+
+  const tpl = wb.Sheets[templateName];
+  if (!tpl) throw new Error(`No existe la hoja plantilla "${templateName}" para crear "${sheetName}".`);
+
+  const newWs = deepClone(tpl);
+  wb.Sheets[sheetName] = newWs;
+
+  if (!wb.SheetNames.includes(sheetName)) wb.SheetNames.push(sheetName);
+
+  return newWs;
+}
+
+
 function collectSummary() {
   const lines = [];
   let grandTotal = 0;
@@ -450,8 +469,8 @@ async function generate() {
   const wb = await loadTemplate();
 
   for (const p of CONFIG.products) {
-    const ws = wb.Sheets[p.sheet];
-    if (!ws) continue;
+    const templateFrom = p.templateFrom || p.sheet; // por si no lo defines
+    const ws = ensureSheet(wb, p.sheet, templateFrom);
 
     for (const sec of p.sections) {
       applySection(ws, p.key, sec.key, sec.anchorText);
@@ -462,6 +481,7 @@ async function generate() {
 
   downloadWorkbook(wb, buildFilename());
 }
+
 
 function bind() {
   const run = async () => {
@@ -481,6 +501,7 @@ function bind() {
 
 render();
 bind();
+
 
 
 
