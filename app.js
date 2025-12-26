@@ -323,26 +323,31 @@ function setText(ws, r, c, value) {
 function applySection(ws, productKey, sectionKey, anchorText) {
   const sizesSet = new Set(CONFIG.sizes.map(s => normalizeSize(s)));
 
+  // 1) recoger cantidades (solo > 0)
   const qtyBySize = new Map();
   for (const size of CONFIG.sizes) {
+    const ns = normalizeSize(size);
     const val = n(idFor(productKey, sectionKey, size));
-    if (val > 0) qtyBySize.set(normalizeSize(size), val);
+    if (val > 0) qtyBySize.set(ns, val);
   }
 
   const range = decodeRef(ws);
 
+  // 2) delimitar zona de búsqueda (si hay anchor, empezamos debajo)
   let startRow = range.s.r;
   let endRow = range.e.r;
 
   if (anchorText) {
     const anchorRow = findRowContaining(ws, anchorText);
-    if (anchorRow != null) {
-      startRow = anchorRow + 1;
-      endRow = range.e.r;
-    }
+    if (anchorRow != null) startRow = anchorRow + 1;
   }
 
-  const found = findSizeColumnAndRows(ws, startRow, endRow, sizesSet);
+  // 3) localizar fila de encabezado y punto de inserción real (debajo del header)
+  const headerRow = findHeaderRow(ws, startRow, endRow);
+  let insertAt = (headerRow != null) ? headerRow + 1 : startRow;
+
+  // 4) localizar donde están actualmente las tallas (si existen) y la columna de talla
+  const found = findSizeColumnAndRows(ws, insertAt, endRow, sizesSet);
 
   let sizeCol = null;
   let existingRows = [];
@@ -350,23 +355,22 @@ function applySection(ws, productKey, sectionKey, anchorText) {
 
   if (found) {
     sizeCol = found.sizeCol;
-    existingRows = found.rows.slice().sort((a,b)=>a-b);
-    templateRow = existingRows[0];
+    existingRows = found.rows.slice().sort((a, b) => a - b);
+    templateRow = existingRows[0]; // primera fila de tallas como modelo
   } else {
-    // Si no hay tallas en la plantilla para esa sección:
-    // intentamos deducir una fila "plantilla" cercana (la primera fila después del anchor)
-    sizeCol = null;
-    templateRow = startRow;
-    existingRows = [];
+    // fallback: en tu plantilla normalmente la talla está en columna E (0-index=4)
+    sizeCol = 4;
+    templateRow = insertAt; // usamos la primera fila debajo del header como modelo
   }
 
-  // Si no hay ninguna talla con cantidad, eliminamos todas las filas de tallas existentes y listo.
+  const qtyCol = sizeCol + 1;
+
+  // 5) Si no hay cantidades: borrar filas existentes de tallas y salir
   if (qtyBySize.size === 0) {
     if (existingRows.length) {
-      // borrar todas las filas de tallas detectadas
+      // borrar de abajo a arriba para no descolocar índices
       for (let i = existingRows.length - 1; i >= 0; i--) {
         const row = existingRows[i];
-        // borrar esa fila desplazando arriba
         clearRow(ws, row);
         shiftRows(ws, row + 1, -1);
       }
@@ -374,7 +378,8 @@ function applySection(ws, productKey, sectionKey, anchorText) {
     return;
   }
 
-  // 1) Borramos filas existentes de tallas (todas) para reconstruir limpio
+  // 6) Si hay cantidades: reconstruir bloque de tallas
+  // 6.1) eliminar todas las filas actuales de tallas (si existen)
   if (existingRows.length) {
     for (let i = existingRows.length - 1; i >= 0; i--) {
       const row = existingRows[i];
@@ -383,53 +388,49 @@ function applySection(ws, productKey, sectionKey, anchorText) {
     }
   }
 
-  // Recalcular tras borrar
-  const r2 = decodeRef(ws);
-  let insertAt = startRow;
-  if (anchorText) {
-    const anchorRow2 = findRowContaining(ws, anchorText);
-    if (anchorRow2 != null) insertAt = anchorRow2 + 1;
-  }
+  // 6.2) recalcular insertAt tras borrados (importante)
+  {
+    const range2 = decodeRef(ws);
+    let startRow2 = range2.s.r;
+    let endRow2 = range2.e.r;
 
-  // Encontrar de nuevo sizeCol por plantilla (si existía antes)
-  // Si no lo tenemos, intentamos encontrar una columna donde en templateRow haya algo tipo "M/S/..."
-  if (sizeCol == null) {
-    // buscamos en la fila templateRow la primera celda tipo texto para usar como col talla (heurística)
-    const rr = decodeRef(ws);
-    const rowCheck = Math.min(Math.max(templateRow, rr.s.r), rr.e.r);
-    for (let c = rr.s.c; c <= rr.e.c; c++) {
-      const cell = getCell(ws, rowCheck, c);
-      if (!cell || cell.v == null) continue;
-      const v = normalizeSize(cell.v);
-      if (sizesSet.has(v)) { sizeCol = c; break; }
+    if (anchorText) {
+      const a2 = findRowContaining(ws, anchorText);
+      if (a2 != null) startRow2 = a2 + 1;
     }
-    // si sigue null, asumimos que en tu plantilla la talla está en columna E (4) (fallback)
-    if (sizeCol == null) sizeCol = 4;
+
+    const headerRow2 = findHeaderRow(ws, startRow2, endRow2);
+    insertAt = (headerRow2 != null) ? headerRow2 + 1 : startRow2;
+
+    // si la fila modelo estaba dentro de las filas borradas, usa insertAt como modelo
+    // (para evitar clonar una fila que ya no existe)
+    if (templateRow == null || templateRow < range2.s.r || templateRow > range2.e.r) {
+      templateRow = insertAt;
+    }
   }
 
-  const qtyCol = sizeCol + 1;
-
-  // Insertamos exactamente las filas necesarias (tallas con qty > 0) en el orden del array CONFIG.sizes
+  // 6.3) orden final de tallas: el mismo que CONFIG.sizes, pero solo las que tienen cantidad
   const wanted = [];
   for (const size of CONFIG.sizes) {
     const ns = normalizeSize(size);
     if (qtyBySize.has(ns)) wanted.push(ns);
   }
 
-  // Aseguramos que hay sitio insertando filas
+  // 6.4) insertar espacio y escribir filas
   shiftRows(ws, insertAt, wanted.length);
-
-  // Copiamos formato y escribimos talla/cantidad
-  const refNow = decodeRef(ws);
-  const modelRow = Math.min(Math.max(templateRow, refNow.s.r), refNow.e.r);
 
   for (let i = 0; i < wanted.length; i++) {
     const row = insertAt + i;
-    cloneRow(ws, modelRow, row);
+
+    // Clona formato/estructura de la fila modelo
+    cloneRow(ws, templateRow, row);
+
+    // Escribe talla y cantidad
     setText(ws, row, sizeCol, wanted[i]);
     setNumber(ws, row, qtyCol, qtyBySize.get(wanted[i]));
   }
 }
+
 
 async function generate() {
   const wb = await loadTemplate();
@@ -473,6 +474,7 @@ function bind() {
 
 render();
 bind();
+
 
 
 
