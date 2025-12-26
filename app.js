@@ -1,5 +1,5 @@
 const CONFIG = {
-  templatePath: "./Plantilla.xlsx",
+  templatePath: "./Plantilla_pedido.xlsx",
   sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"],
   products: [
     {
@@ -501,6 +501,7 @@ function bind() {
 
 render();
 bind();
+
 
 
 
