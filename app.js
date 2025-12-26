@@ -15,12 +15,29 @@ function normalizeSize(v) {
     .replace(/^XXS$/, "XS");
 }
 
-function loadSizeMapFromSheet(ws) {
-  const map = new Map(); // size -> { row, col }
+function findRowContaining(ws, text) {
+  if (!ws || !ws["!ref"]) return null;
+  const t = String(text).toLowerCase();
+  const range = XLSX.utils.decode_range(ws["!ref"]);
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = ws[addr];
+      if (!cell || cell.v == null) continue;
+      if (String(cell.v).toLowerCase().includes(t)) return r;
+    }
+  }
+  return null;
+}
+
+function loadSizeMapFromSheetStartingAt(ws, startRow) {
+  const map = new Map();
   if (!ws || !ws["!ref"]) return map;
 
   const range = XLSX.utils.decode_range(ws["!ref"]);
-  for (let r = range.s.r; r <= range.e.r; r++) {
+  const r0 = Math.max(startRow, range.s.r);
+
+  for (let r = r0; r <= range.e.r; r++) {
     for (let c = range.s.c; c <= range.e.c; c++) {
       const addr = XLSX.utils.encode_cell({ r, c });
       const cell = ws[addr];
@@ -29,10 +46,10 @@ function loadSizeMapFromSheet(ws) {
       const s = normalizeSize(cell.v);
       if (!SIZES.includes(s)) continue;
 
-      // Guardamos la primera aparición de cada talla (normalmente es la columna de tallas)
       if (!map.has(s)) map.set(s, { r, c });
     }
   }
+
   return map;
 }
 
@@ -43,18 +60,27 @@ function setNumericCell(ws, r, c, value) {
   ws[addr].t = "n";
 }
 
-function applyBlock(ws, prefix) {
-  const sizeMap = loadSizeMapFromSheet(ws);
-
-  // Rellena en la columna de la derecha de donde esté la talla
+function applyBlockFrom(ws, prefix, startRow) {
+  const sizeMap = loadSizeMapFromSheetStartingAt(ws, startRow);
   for (const size of SIZES) {
     const pos = sizeMap.get(size);
     if (!pos) continue;
-
-    const key = `${prefix}_${size.toLowerCase()}`; // ej: cam_xs
-    const val = n(key);
-    setNumericCell(ws, pos.r, pos.c + 1, val);
+    const key = `${prefix}_${size.toLowerCase()}`;
+    setNumericCell(ws, pos.r, pos.c + 1, n(key));
   }
+}
+
+function applySudaderaTwoBlocks(ws) {
+  const rowTec = findRowContaining(ws, "SUDADERA TECNICA");
+  const rowPas = findRowContaining(ws, "SUDADERA PASEO");
+
+  if (rowTec == null || rowPas == null) {
+    applyBlockFrom(ws, "sudt", 0);
+    return;
+  }
+
+  applyBlockFrom(ws, "sudt", rowTec + 1);
+  applyBlockFrom(ws, "sudp", rowPas + 1);
 }
 
 async function loadTemplate() {
@@ -93,91 +119,32 @@ async function generate() {
   const wb = await loadTemplate();
 
   const wsCam = wb.Sheets["CAMISETA"];
-  if (wsCam) applyBlock(wsCam, "cam");
+  if (wsCam) applyBlockFrom(wsCam, "cam", 0);
 
   const wsSud = wb.Sheets["SUDADERA"];
-  if (wsSud) {
-    // Para diferenciar técnica y paseo, buscamos tallas y rellenamos todas;
-    // si tu hoja tiene 2 bloques con tallas repetidas, la función por defecto
-    // rellenará la primera aparición de cada talla.
-    // Para hacerlo 100% exacto con 2 bloques, usamos un método por “anclaje”:
-    applySudaderaTwoBlocks(wsSud);
-  }
+  if (wsSud) applySudaderaTwoBlocks(wsSud);
 
   const wsPch = wb.Sheets["PANTALON CHANDAL"];
-  if (wsPch) applyBlock(wsPch, "pch");
+  if (wsPch) applyBlockFrom(wsPch, "pch", 0);
 
   downloadWorkbook(wb, buildFilename());
 }
 
-function findRowContaining(ws, text) {
-  if (!ws || !ws["!ref"]) return null;
-  const t = String(text).toLowerCase();
-  const range = XLSX.utils.decode_range(ws["!ref"]);
-  for (let r = range.s.r; r <= range.e.r; r++) {
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const addr = XLSX.utils.encode_cell({ r, c });
-      const cell = ws[addr];
-      if (!cell || cell.v == null) continue;
-      const s = String(cell.v).toLowerCase();
-      if (s.includes(t)) return r;
-    }
-  }
-  return null;
+function bind() {
+  const btn = document.getElementById("btn");
+  const btnMobile = document.getElementById("btnMobile");
+  const btnClear = document.getElementById("btnClear");
+  const btnClearMobile = document.getElementById("btnClearMobile");
+
+  btn?.addEventListener("click", async () => {
+    try { await generate(); } catch (e) { alert(e?.message || String(e)); }
+  });
+
+  btnMobile?.addEventListener("click", () => btn?.click());
+
+  const clear = () => location.reload();
+  btnClear?.addEventListener("click", clear);
+  btnClearMobile?.addEventListener("click", clear);
 }
 
-function loadSizeMapFromSheetStartingAt(ws, startRow) {
-  const map = new Map();
-  if (!ws || !ws["!ref"]) return map;
-
-  const range = XLSX.utils.decode_range(ws["!ref"]);
-  for (let r = Math.max(startRow, range.s.r); r <= range.e.r; r++) {
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const addr = XLSX.utils.encode_cell({ r, c });
-      const cell = ws[addr];
-      if (!cell || cell.v == null) continue;
-
-      const s = normalizeSize(cell.v);
-      if (!SIZES.includes(s)) continue;
-
-      if (!map.has(s)) map.set(s, { r, c });
-    }
-  }
-  return map;
-}
-
-function applyBlockFrom(ws, prefix, startRow) {
-  const sizeMap = loadSizeMapFromSheetStartingAt(ws, startRow);
-  for (const size of SIZES) {
-    const pos = sizeMap.get(size);
-    if (!pos) continue;
-    const key = `${prefix}_${size.toLowerCase()}`;
-    const val = n(key);
-    setNumericCell(ws, pos.r, pos.c + 1, val);
-  }
-}
-
-function applySudaderaTwoBlocks(ws) {
-  const rowTec = findRowContaining(ws, "SUDADERA TECNICA");
-  const rowPas = findRowContaining(ws, "SUDADERA PASEO");
-
-  // Si no encontramos títulos, caemos al modo simple
-  if (rowTec == null || rowPas == null) {
-    applyBlock(ws, "sudt");
-    return;
-  }
-
-  // Rellenamos desde justo debajo del título
-  applyBlockFrom(ws, "sudt", rowTec + 1);
-  applyBlockFrom(ws, "sudp", rowPas + 1);
-}
-
-document.getElementById("btn")?.addEventListener("click", async () => {
-  try {
-    await generate();
-  } catch (err) {
-    alert(err?.message || String(err));
-  }
-});
-
-document.getElementById("btnClear")?.addEventListener("click", () => location.reload());
+bind();
