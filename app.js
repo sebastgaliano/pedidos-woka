@@ -145,7 +145,10 @@ async function loadTemplate() {
   const res = await fetch(CONFIG.templatePath, { cache: "no-store" });
   if (!res.ok) throw new Error("No se pudo cargar la plantilla.");
   const ab = await res.arrayBuffer();
-  return XLSX.read(ab, { type: "array" });
+  return XLSX.read(ab, {
+    type: "array",
+    cellStyles: true
+  });
 }
 
 function downloadWorkbook(wb, filename) {
@@ -444,5 +447,6 @@ function bind() {
 
 render();
 bind();
+
 
 
