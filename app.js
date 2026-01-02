@@ -6,7 +6,7 @@ const CONFIG = {
       key: "equipacion",
       title: "Equipación",
       sheet: "EQUIPACION DE JUEGO",
-      templateFrom: "EQUIPACION DE JUEGO", // cámbialo a "PLANTILLA" si tienes una hoja plantilla
+      templateFrom: "EQUIPACION", // cámbialo a "PLANTILLA" si tienes una hoja plantilla
       sections: [
         { key: "camiseta_juego", title: "Camiseta de juego", anchorText: "CAMISETA DE JUEGO" },
         { key: "pantalon_juego", title: "Pantalón de juego", anchorText: "PANTALON DE JUEGO" },
@@ -505,3 +505,4 @@ function bind() {
 
 render();
 bind();
+
