@@ -6,9 +6,10 @@ const CONFIG = {
       key: "equipacion",
       title: "Equipación",
       sheet: "EQUIPACION DE JUEGO",
+      templateFrom: "EQUIPACION DE JUEGO", // cámbialo a "PLANTILLA" si tienes una hoja plantilla
       sections: [
         { key: "camiseta_juego", title: "Camiseta de juego", anchorText: "CAMISETA DE JUEGO" },
-        { key: "pantalón_juego", title: "Pantalón de juego", anchorText: "PANTALÓN DE JUEGO" },
+        { key: "pantalon_juego", title: "Pantalón de juego", anchorText: "PANTALON DE JUEGO" },
         { key: "cubre_juego", title: "Cubre de juego", anchorText: "CUBRE DE JUEGO" },
       ],
     },
@@ -16,12 +17,14 @@ const CONFIG = {
       key: "camiseta_paseo",
       title: "Camiseta de paseo",
       sheet: "CAMISETA",
+      templateFrom: "CAMISETA",
       sections: [{ key: "base", title: null, anchorText: null }],
     },
     {
       key: "sudadera",
       title: "Sudadera",
       sheet: "SUDADERA",
+      templateFrom: "SUDADERA",
       sections: [
         { key: "tecnica", title: "Sudadera técnica", anchorText: "SUDADERA TECNICA" },
         { key: "paseo", title: "Sudadera paseo", anchorText: "SUDADERA PASEO" },
@@ -31,14 +34,9 @@ const CONFIG = {
       key: "pantalon_chandal",
       title: "Pantalón chándal",
       sheet: "PANTALON CHANDAL",
+      templateFrom: "PANTALON CHANDAL",
       sections: [{ key: "base", title: null, anchorText: null }],
     },
-
-    // Futuro: solo añade aquí (sin tocar HTML)
-    // { key:"equipacion_juego", title:"Equipación de juego", sheet:"EQUIPACION JUEGO", sections:[{key:"base", title:null, anchorText:null}] },
-    // { key:"cubre_juego", title:"Cubre de juego", sheet:"CUBRE JUEGO", sections:[{key:"base", title:null, anchorText:null}] },
-    // { key:"pantalon_juego", title:"Pantalón de juego", sheet:"PANTALON JUEGO", sections:[{key:"base", title:null, anchorText:null}] },
-    // { key:"abrigo", title:"Abrigo", sheet:"ABRIGO", sections:[{key:"base", title:null, anchorText:null}] },
   ],
 };
 
@@ -60,6 +58,34 @@ function ensureSheet(wb, sheetName, templateName) {
   return newWs;
 }
 
+function normText(v) {
+  return String(v ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function idFor(productKey, sectionKey, size) {
+  return `${productKey}__${sectionKey}__${String(size).toLowerCase()}`;
+}
+
+function n(id) {
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  const v = Number(el.value);
+  return Number.isFinite(v) && v >= 0 ? v : 0;
+}
 
 function collectSummary() {
   const lines = [];
@@ -119,27 +145,6 @@ function renderSummaryHTML(summary) {
     </div>
     <div>${blocks}</div>
   `;
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-
-function idFor(productKey, sectionKey, size) {
-  return `${productKey}__${sectionKey}__${String(size).toLowerCase()}`;
-}
-
-function n(id) {
-  const el = document.getElementById(id);
-  if (!el) return 0;
-  const v = Number(el.value);
-  return Number.isFinite(v) && v >= 0 ? v : 0;
 }
 
 function render() {
@@ -244,20 +249,19 @@ function getCell(ws, r, c) {
   return ws[addr(r, c)];
 }
 
-function normalizeSize(v) {
-  return String(v ?? "").trim().toUpperCase().replace(/\s+/g, "");
-}
-
 function findRowContaining(ws, text) {
   if (!ws || !ws["!ref"]) return null;
+
   const range = decodeRef(ws);
-  const t = String(text).toLowerCase();
+  const t = normText(text);
 
   for (let r = range.s.r; r <= range.e.r; r++) {
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cell = getCell(ws, r, c);
       if (!cell || cell.v == null) continue;
-      if (String(cell.v).toLowerCase().includes(t)) return r;
+
+      const v = normText(cell.v);
+      if (v.includes(t)) return r;
     }
   }
   return null;
@@ -270,20 +274,20 @@ function findHeaderRow(ws, startRow, endRow) {
   const rStart = Math.max(startRow, range.s.r);
   const rEnd = Math.min(endRow, range.e.r);
 
-  const required = ["nombre", "talla", "cantidad"];
-
   for (let r = rStart; r <= rEnd; r++) {
-    let hit = 0;
+    let hasTalla = false;
+    let hasCant = false;
 
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cell = getCell(ws, r, c);
       if (!cell || cell.v == null) continue;
 
-      const v = String(cell.v).toLowerCase().trim();
-      if (required.includes(v)) hit++;
+      const v = normText(cell.v);
+      if (v.includes("talla")) hasTalla = true;
+      if (v.includes("cantidad") || v.includes("cant")) hasCant = true;
     }
 
-    if (hit >= 2) return r;
+    if (hasTalla && hasCant) return r;
   }
 
   return null;
@@ -298,9 +302,9 @@ function findHeaderCols(ws, headerRow) {
     const cell = getCell(ws, headerRow, c);
     if (!cell || cell.v == null) continue;
 
-    const v = String(cell.v).toLowerCase().trim();
-    if (v === "talla") sizeCol = c;
-    if (v === "cantidad") qtyCol = c;
+    const v = normText(cell.v);
+    if (sizeCol == null && v.includes("talla")) sizeCol = c;
+    if (qtyCol == null && (v.includes("cantidad") || v === "cant" || v.startsWith("cant"))) qtyCol = c;
   }
 
   return { sizeCol, qtyCol };
@@ -347,7 +351,6 @@ function setNumber(ws, r, c, value) {
 }
 
 function applyStandardCols(ws) {
-  // Ajusta si tu proveedor usa más columnas. A..I cubre tu ejemplo.
   ws["!cols"] = [
     { wch: 24 }, // A Nombre
     { wch: 16 }, // B Imprimir Nombre
@@ -361,6 +364,12 @@ function applyStandardCols(ws) {
   ];
 }
 
+/**
+ * Escribe debajo del encabezado de la sección (no mueve filas, no rompe merges).
+ * - Busca anchorText (si existe) para empezar a buscar el header debajo.
+ * - Encuentra fila header con Talla/Cantidad (robusto).
+ * - Limpia un bloque de filas de datos y escribe las tallas con qty>0.
+ */
 function applySection(ws, productKey, sectionKey, anchorText) {
   const wanted = [];
   for (const size of CONFIG.sizes) {
@@ -386,7 +395,7 @@ function applySection(ws, productKey, sectionKey, anchorText) {
 
   const dataStart = headerRow + 1;
 
-  // Detectar hasta donde llega el bloque actual (sin mover filas ni merges)
+  // Detectar hasta donde llega el bloque actual
   let dataEnd = dataStart - 1;
   let emptyStreak = 0;
 
@@ -405,9 +414,8 @@ function applySection(ws, productKey, sectionKey, anchorText) {
     }
   }
 
-  const templateRow = dataStart; // fila “modelo” del bloque de datos
+  const templateRow = dataStart;
 
-  // Limpiar bloque (dejamos formato intacto)
   const rowsNeeded = Math.max(wanted.length, 1);
   const clearTo = Math.max(dataEnd, dataStart + rowsNeeded + 12);
 
@@ -416,10 +424,8 @@ function applySection(ws, productKey, sectionKey, anchorText) {
     clearRowValues(ws, r);
   }
 
-  // Si no hay nada que escribir, dejamos el bloque vacío
   if (wanted.length === 0) return;
 
-  // Escribir filas (se “añaden” tallas simplemente ocupando filas libres del bloque)
   for (let i = 0; i < wanted.length; i++) {
     const r = dataStart + i;
     if (r !== templateRow) cloneRow(ws, templateRow, r);
@@ -469,7 +475,7 @@ async function generate() {
   const wb = await loadTemplate();
 
   for (const p of CONFIG.products) {
-    const templateFrom = p.templateFrom || p.sheet; // por si no lo defines
+    const templateFrom = p.templateFrom || p.sheet;
     const ws = ensureSheet(wb, p.sheet, templateFrom);
 
     for (const sec of p.sections) {
@@ -481,7 +487,6 @@ async function generate() {
 
   downloadWorkbook(wb, buildFilename());
 }
-
 
 function bind() {
   const run = async () => {
@@ -498,13 +503,5 @@ function bind() {
   document.getElementById("btnClearMobile")?.addEventListener("click", confirmClear);
 }
 
-
 render();
 bind();
-
-
-
-
-
-
-
